@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Анализ данных</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+            color: #333;
+        }
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 30px;
+        }
+        .section {
+            margin-bottom: 30px;
+            padding: 25px;
+            border-radius: 8px;
+            background-color: #fff;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            border: 1px solid #e0e0e0;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        input[type="file"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background-color: #f9f9f9;
+        }
+        button {
+            background-color: #3498db;
+            color: white;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        .results {
+            display: none;
+        }
+        .metrics {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+        .metric {
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 6px;
+            border-left: 4px solid #3498db;
+        }
+        .metric strong {
+            color: #2c3e50;
+        }
+        .info-block {
+            margin: 25px 0;
+            padding: 20px;
+            background-color: #f8f9fa;
+            border-radius: 6px;
+        }
+        .plot-container {
+            margin: 30px 0;
+            padding: 20px;
+            background-color: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            text-align: center;
+        }
+        .plot {
+            margin: 20px auto;
+            max-width: 100%;
+        }
+        .plot img {
+            max-width: 100%;
+            height: auto;
+            border: 1px solid #eee;
+        }
+        .download-section {
+            margin-top: 30px;
+            text-align: center;
+        }
+        #featuresList {
+            columns: 3;
+            column-gap: 20px;
+            padding-left: 20px;
+        }
+        #featuresList li {
+            margin-bottom: 8px;
+            break-inside: avoid;
+        }
+        #missingByCols {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 6px;
+            overflow-x: auto;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+        .status {
+            margin-top: 15px;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .error {
+            background-color: #fdecea;
+            color: #d32f2f;
+            border: 1px solid #ef9a9a;
+        }
+        .success {
+            background-color: #e8f5e9;
+            color: #388e3c;
+            border: 1px solid #a5d6a7;
+        }
+        .loading {
+            color: #0288d1;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <h1>Система загрузки, анализа и предсказания производственных данных на основе машинного обучения</h1>
+
+    <div class="section">
+        <h2>1. Загрузка данных</h2>
+        <div class="form-group">
+            <label for="dataFile">Выберите файл данных (CSV или Excel):</label>
+            <input type="file" id="dataFile" accept=".csv,.xlsx,.xls">
+        </div>
+        <button id="uploadBtn">Загрузить</button>
+        <div id="uploadStatus" class="status"></div>
+    </div>
+
+    <div class="section" id="analysisSection" style="display: none;">
+        <h2>2. Анализ данных</h2>
+        <div class="form-group">
+            <label for="modelFile">Опционально: загрузить свою модель (.pkl или .joblib):</label>
+            <input type="file" id="modelFile" accept=".pkl,.joblib">
+        </div>
+        <button id="analyzeBtn">Проанализировать</button>
+        <div id="analyzeStatus" class="status"></div>
+    </div>
+
+    <div class="section results" id="resultsSection">
+        <h2>Результаты анализа</h2>
+
+        <div class="metrics">
+            <div class="metric">
+                <strong>MAE (Средняя абсолютная ошибка):</strong>
+                <span id="MAE">-</span>
+            </div>
+            <div class="metric">
+                <strong>R² (Коэффициент детерминации):</strong>
+                <span id="R2">-</span>
+            </div>
+            <div class="metric">
+                <strong>Количество строк:</strong>
+                <span id="str_amount">-</span>
+            </div>
+            <div class="metric">
+                <strong>Пропущенные значения:</strong>
+                <span id="missing">-</span>
+            </div>
+        </div>
+
+        <div class="info-block">
+            <h3>Использованные признаки</h3>
+            <ul id="featuresList"></ul>
+        </div>
+
+        <div class="info-block">
+            <h3>Пропуски по столбцам</h3>
+            <pre id="missingByCols">Нет данных</pre>
+        </div>
+
+        <div class="plot-container">
+            <h3>График предсказаний</h3>
+            <div class="plot" id="predPlot"></div>
+        </div>
+
+        <div class="plot-container">
+            <h3>Важность признаков</h3>
+            <div class="plot" id="featPlot"></div>
+        </div>
+
+        <div class="download-section">
+            <a id="downloadModel" href="#" download="model.joblib">
+                <button>Скачать обученную модель</button>
+            </a>
+        </div>
+    </div>
+
+    <script>
+        let currentSessionId = null;
+
+        // Функция для отображения ошибок
+        function showError(elementId, message) {
+            const element = document.getElementById(elementId);
+            element.textContent = message;
+            element.className = 'error';
+        }
+
+        // Функция для отображения успешных сообщений
+        function showSuccess(elementId, message) {
+            const element = document.getElementById(elementId);
+            element.textContent = message;
+            element.className = 'success';
+        }
+
+        // Функция для отображения загрузки
+        function showLoading(elementId, message) {
+            const element = document.getElementById(elementId);
+            element.textContent = message;
+            element.className = 'loading';
+        }
+
+        // Обработчик загрузки файла данных
+        document.getElementById('uploadBtn').addEventListener('click', async () => {
+            const fileInput = document.getElementById('dataFile');
+            const file = fileInput.files[0];
+
+            if (!file) {
+                showError('uploadStatus', 'Пожалуйста, выберите файл');
+                return;
+            }
+
+            showLoading('uploadStatus', 'Загрузка файла...');
+
+            try {
+                const formData = new FormData();
+                formData.append('file', file);
+
+                const response = await fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.detail || 'Ошибка загрузки файла');
+                }
+
+                const data = await response.json();
+                currentSessionId = data.session_id;
+
+                showSuccess('uploadStatus', 'Файл успешно загружен');
+                document.getElementById('analysisSection').style.display = 'block';
+
+            } catch (error) {
+                showError('uploadStatus', error.message);
+            }
+        });
+
+        // Обработчик анализа данных
+        document.getElementById('analyzeBtn').addEventListener('click', async () => {
+            if (!currentSessionId) {
+                showError('analyzeStatus', 'Сначала загрузите файл данных');
+                return;
+            }
+
+            showLoading('analyzeStatus', 'Анализ данных...');
+
+            try {
+                const modelFileInput = document.getElementById('modelFile');
+                const modelFile = modelFileInput.files[0];
+
+                const formData = new FormData();
+                if (modelFile) {
+                    formData.append('file', modelFile);
+                }
+
+                const url = `/analyze?session_id=${encodeURIComponent(currentSessionId)}`;
+
+                const response = await fetch(url, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.detail || 'Ошибка анализа данных');
+                }
+
+                showSuccess('analyzeStatus', 'Анализ завершен');
+                await fetchResults();
+
+            } catch (error) {
+                showError('analyzeStatus', error.message);
+            }
+        });
+
+        async function fetchResults() {
+            if (!currentSessionId) return;
+
+            try {
+                const response = await fetch(`/results?session_id=${currentSessionId}`);
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.detail || 'Ошибка получения результатов');
+                }
+
+                const results = await response.json();
+                displayResults(results);
+            } catch (error) {
+                console.error('Ошибка получения результатов:', error);
+            }
+        }
+
+        // Функция отображения результатов
+        function displayResults(results) {
+            console.log('Received results:', results); // Для отладки
+
+            // Основные метрики
+            document.getElementById('MAE').textContent = results["MAE"].toFixed(4);
+            document.getElementById('R2').textContent = results["R2"].toFixed(4);
+            document.getElementById('str_amount').textContent = results["Количество строк"];
+            document.getElementById('missing').textContent = results["Пропуски"];
+
+            // Список признаков
+            const featuresList = document.getElementById('featuresList');
+            featuresList.innerHTML = results["Признаки"].map(f =>
+                `<li>${f}</li>`
+            ).join('');
+
+            // Пропуски по столбцам
+            document.getElementById('missingByCols').textContent =
+                results["Пропуски по столбцам"] || "Нет пропущенных значений";
+
+            // Графики
+            document.getElementById('predPlot').innerHTML =
+                `<img src="data:image/svg+xml;base64,${results["График предсказаний"]}"
+                      alt="График предсказаний">`;
+
+            document.getElementById('featPlot').innerHTML =
+                `<img src="data:image/svg+xml;base64,${results["График важности признаков"]}"
+                      alt="Важность признаков">`;
+
+            // Ссылка для скачивания
+            document.getElementById('downloadModel').href =
+                `${results["URL для загрузки .joblib файла"]}?session_id=${currentSessionId}`;
+
+            // Показываем секцию результатов
+            document.getElementById('resultsSection').style.display = 'block';
+        }
+    </script>
+</body>
+</html>
